@@ -29,7 +29,7 @@ class SelectSourcePage extends StatelessWidget {
                     child: const Icon(Icons.arrow_back,
                         size: 28, color: AppTheme.primaryPink),
                   ),
-                  Image.asset("assets/logo.png", height: 38),
+                  Image.asset("assets/logo/logo.png", height: 38),
                 ],
               ),
             ),

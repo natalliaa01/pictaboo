@@ -32,7 +32,7 @@ class FramePreviewPage extends StatelessWidget {
                   ),
 
                   // LOGO
-                  Image.asset("assets/logo.png", height: 38),
+                  Image.asset("assets/logo/logo.png", height: 38),
                 ],
               ),
             ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../camera/camera_entry_screen.dart';
+
 import 'pages/frame_page.dart';
 import 'pages/projects_page.dart';
 import 'pages/profile_page.dart';
+import 'frame_preview_page.dart'; // kalau mau pakai nanti di _HomeContent
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,24 +15,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
-  final pages = const [
-    _HomeContent(),
-    FramePage(),
-    ProjectsPage(),
-    ProfilePage(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      _HomeContent(
+        onStartPressed: () {
+          setState(() => currentIndex = 1); // pindah ke tab Frame
+        },
+      ),
+      const FramePage(),
+      const ProjectsPage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
       body: pages[currentIndex],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CameraEntryScreen()),
-          );
+          // FAB = langsung ke tab Frame juga
+          setState(() => currentIndex = 1);
         },
         backgroundColor: Colors.white,
         child: const Icon(Icons.camera_alt, color: Color(0xFFAE2A67)),
@@ -54,7 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeContent extends StatelessWidget {
-  const _HomeContent({super.key});
+  final VoidCallback onStartPressed;
+
+  const _HomeContent({
+    super.key,
+    required this.onStartPressed,
+  });
+
+  // 1 frame dulu, nanti bisa ditambah
+  static const List<String> framePaths = [
+    'assets/frames/frame1.png',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +89,6 @@ class _HomeContent extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // replace with your logo asset at assets/logo/logo.png
                   Image.asset(
                     'assets/logo/logo.png',
                     width: 56,
@@ -126,14 +138,7 @@ class _HomeContent extends StatelessWidget {
                     SizedBox(
                       width: 140,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Start -> Scroll to frames or navigate to frames page
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const FramePage()),
-                          );
-                        },
+                        onPressed: onStartPressed, // ⬅️ langsung ke tab Frame
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF2B7C5),
                           shape: RoundedRectangleBorder(
@@ -157,7 +162,7 @@ class _HomeContent extends StatelessWidget {
 
               const SizedBox(height: 18),
 
-              // Example strips carousel (horizontal)
+              // Example strips carousel (dummy)
               SizedBox(
                 height: 150,
                 child: ListView(
@@ -187,20 +192,21 @@ class _HomeContent extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Frames list: horizontal cards (rounded pink background)
+              // Frames list: horizontal cards (pakai framePaths)
               SizedBox(
                 height: 220,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
+                  itemCount: framePaths.length,
                   itemBuilder: (context, index) {
-                    final framePath = 'assets/frames/frame${index + 1}.png';
+                    final framePath = framePaths[index];
                     return GestureDetector(
                       onTap: () {
-                        // open review frame screen (next)
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ReviewFrameScreen(framePath),
+                            builder: (_) =>
+                                FramePreviewPage(framePath: framePath),
                           ),
                         );
                       },
@@ -208,10 +214,10 @@ class _HomeContent extends StatelessWidget {
                         width: 140,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -224,7 +230,6 @@ class _HomeContent extends StatelessWidget {
                             framePath,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              // graceful fallback when asset not found
                               return Container(
                                 color: Colors.pink.shade50,
                                 child: const Center(
@@ -242,7 +247,6 @@ class _HomeContent extends StatelessWidget {
                     );
                   },
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemCount: 6,
                 ),
               ),
 
@@ -274,174 +278,6 @@ class _HomeContent extends StatelessWidget {
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-/// Simple ReviewFrameScreen used by Home to move to review (matches "gambar 3")
-class ReviewFrameScreen extends StatelessWidget {
-  final String framePath;
-  const ReviewFrameScreen(this.framePath, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Frame'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: const Color(0xFF8B2A6A),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFBD1DC), Color(0xFFF5B7C6)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Expanded(
-                child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      framePath,
-                      fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => Container(
-                        width: 220,
-                        color: Colors.pink.shade50,
-                        child: const Center(child: Icon(Icons.broken_image)),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Next → choose source (camera/gallery)
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SelectSourceScreen(framePath),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFFFFF),
-                      foregroundColor: const Color(0xFF8B2A6A),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      side: const BorderSide(color: Color(0xFFECC7D6)),
-                    ),
-                    child: const Text('Next'),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Select source (camera or gallery) screen (matches "gambar 4")
-class SelectSourceScreen extends StatelessWidget {
-  final String framePath;
-  const SelectSourceScreen(this.framePath, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Source'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: const Color(0xFF8B2A6A),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFBD1DC), Color(0xFFF5B7C6)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              Card(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                child: ListTile(
-                  leading: const Icon(Icons.image, color: Color(0xFF8B2A6A)),
-                  title: const Text("You're selecting 1 frame"),
-                  subtitle: const Text("3 photos will be selected"),
-                ),
-              ),
-              const SizedBox(height: 30),
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset('assets/welcome/camera_illustration.png', width: 160, height: 160, errorBuilder: (_, __, ___) => const Icon(Icons.camera_alt, size: 80, color: Colors.pink)),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // go to camera flow (3 photos)
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => CameraEntryScreen(forFrame: framePath)),
-                              );
-                            },
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            label: const Text('Camera'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF8B2A6A),
-                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: implement gallery multi-pick flow
-                            },
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Gallery'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF8B2A6A),
-                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                            ),
-                          ),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

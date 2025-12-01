@@ -1,11 +1,18 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../../../theme/app_theme.dart';
 import '../../services/gallery_saver_android.dart';
+
+// di atas file (di luar kelas) taruh ini:
+const double kFrameAspectRatio = 0.35;
+// contoh, nanti kamu sesuaikan
+
 
 class PhotoStripPage extends StatefulWidget {
   final String framePath;
@@ -37,40 +44,27 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
         children: [
           const SizedBox(height: 10),
 
-          // FINAL PREVIEW AREA
           Expanded(
             child: Center(
               child: RepaintBoundary(
                 key: _captureKey,
                 child: AspectRatio(
-                  aspectRatio: 1 / 2.8,
+                  aspectRatio: kFrameAspectRatio, // pakai rasio frame
                   child: Stack(
                     children: [
-                      // 3 PHOTOS
+                      // 3 FOTO DI BELAKANG FRAME
                       Column(
-                        children: [
-                          Expanded(
+                        children: List.generate(3, (i) {
+                          return Expanded(
                             child: Image.file(
-                              File(widget.photos[0]),
-                              fit: BoxFit.cover,
+                              File(widget.photos[i]),
+                              fit: BoxFit.cover, // biar penuh, meski sedikit ke-crop
                             ),
-                          ),
-                          Expanded(
-                            child: Image.file(
-                              File(widget.photos[1]),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Expanded(
-                            child: Image.file(
-                              File(widget.photos[2]),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ],
+                          );
+                        }),
                       ),
 
-                      // OVERLAY FRAME PNG
+                      // FRAME PNG DI ATASNYA
                       Positioned.fill(
                         child: Image.asset(
                           widget.framePath,
@@ -83,6 +77,7 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
               ),
             ),
           ),
+
 
           const SizedBox(height: 20),
 
@@ -113,23 +108,48 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
     );
   }
 
+  // SLOT FOTO AMAN: KALAU INDEX DI LUAR RANGE, TAMPILIN PLACEHOLDER
+  Widget _photoSlot(int index) {
+    if (index >= widget.photos.length) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: Icon(Icons.photo, color: Colors.grey),
+        ),
+      );
+    }
+
+    return Image.file(
+      File(widget.photos[index]),
+      fit: BoxFit.cover,
+    );
+  }
+
   Future<void> _saveResult() async {
     setState(() => saving = true);
 
     try {
-      // CAPTURE WIDGET TO IMAGE
-      RenderRepaintBoundary boundary =
-          _captureKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final boundary = _captureKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('Boundary not found');
+      }
 
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final ui.Image image =
+          await boundary.toImage(pixelRatio: 3.0); // high-res
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw Exception('Failed to encode image');
+      }
 
-      final pngBytes = byteData!.buffer.asUint8List();
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
 
       // SAVE TO TEMP FILE
       final dir = await getTemporaryDirectory();
       final file = File(
-          '${dir.path}/strip_${DateTime.now().millisecondsSinceEpoch}.png');
+        '${dir.path}/strip_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       await file.writeAsBytes(pngBytes);
 
       // SAVE TO GALLERY + MY PROJECTS
@@ -142,15 +162,25 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? "Saved to My Projects!" : "Failed to save"),
+          content:
+              Text(ok ? "Saved to My Projects!" : "Failed to save"),
         ),
       );
 
       if (ok) Navigator.pop(context);
     } catch (e) {
-      print("SAVE ERROR: $e");
+      debugPrint("SAVE ERROR: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error while saving"),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => saving = false);
+      }
     }
-
-    setState(() => saving = false);
   }
 }

@@ -35,7 +35,7 @@ class HomePage extends StatelessWidget {
             // LOGO + TITLE
             Row(
               children: [
-                Image.asset("assets/logo.png", height: 40),
+                Image.asset("assets/logo/logo.png", height: 40),
                 const SizedBox(width: 10),
                 Text(
                   "PICT A BOO",

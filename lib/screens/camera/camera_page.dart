@@ -30,16 +30,31 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   Future<void> initCamera() async {
-    cameras = await availableCameras();
-    startCamera(isFrontCamera ? cameras[1] : cameras[0]);
+    try {
+      cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        debugPrint('No cameras available');
+        return;
+      }
+
+      // kalau cuma 1 kamera, pakai itu saja
+      final CameraDescription backCamera = cameras[0];
+      final CameraDescription? frontCamera =
+          cameras.length > 1 ? cameras[1] : null;
+
+      startCamera(isFrontCamera && frontCamera != null ? frontCamera : backCamera);
+    } catch (e) {
+      debugPrint('initCamera error: $e');
+    }
   }
 
   Future<void> startCamera(CameraDescription cameraDescription) async {
     controller = CameraController(
       cameraDescription,
-      ResolutionPreset.high,
+      ResolutionPreset.medium,   // ← ganti ini
       enableAudio: false,
     );
+
 
     await controller!.initialize();
     if (mounted) setState(() {});
@@ -80,6 +95,10 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void switchCamera() {
+    if (cameras.length < 2) {
+      // tidak ada kamera kedua, abaikan
+      return;
+    }
     setState(() {
       isFrontCamera = !isFrontCamera;
     });
@@ -132,12 +151,59 @@ class _CameraPageState extends State<CameraPage> {
 
             const SizedBox(height: 10),
 
-            // CAMERA PREVIEW
-            Expanded(
-              child: controller == null || !controller!.value.isInitialized
-                  ? const Center(child: CircularProgressIndicator())
-                  : CameraPreview(controller!),
+            // 👇👇 PREVIEW 3 FOTO (KOTAK HIJAU DI SS-MU) 👇👇
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  final hasPhoto = index < capturedPhotos.length;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: hasPhoto ? AppTheme.primaryPink : Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                    child: hasPhoto
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(capturedPhotos[index]),
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.photo_camera_outlined,
+                            color: Colors.grey,
+                          ),
+                  );
+                }),
+              ),
             ),
+
+            const SizedBox(height: 10),
+
+            // 👇👇 CAMERA PREVIEW TIDAK GEPENG 👇👇
+            SizedBox(
+            // tinggi diset dari lebar, biar mirip XML 4:3
+            height: MediaQuery.of(context).size.width * 3 / 4, // tinggi = lebar * (3/4)
+            child: Center(
+              child: controller == null || !controller!.value.isInitialized
+                  ? const CircularProgressIndicator()
+                  : AspectRatio(
+                      aspectRatio: 4 / 3, // ⬅️ landscape: lebar > tinggi
+                      child: CameraPreview(controller!),
+                    ),
+            ),
+          ),
+
+
 
             const SizedBox(height: 10),
 
@@ -173,6 +239,7 @@ class _CameraPageState extends State<CameraPage> {
       ),
     );
   }
+
 
   // TIMER BUTTON WIDGET
   Widget timerButton(int value, String label) {
