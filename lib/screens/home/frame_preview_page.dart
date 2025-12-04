@@ -49,7 +49,7 @@ class FramePreviewPage extends StatelessWidget {
                     child: Image.asset(
                       framePath,
                       width: double.infinity,
-                      fit: BoxFit.fitWidth,
+                      fit: BoxFit.fitHeight,
                     ),
                   ),
                 ),

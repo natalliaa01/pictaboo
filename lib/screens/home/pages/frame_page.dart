@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pictaboo/theme/app_theme.dart';
 import '../frame_preview_page.dart'; // pastikan ada file ini ya
 
 class FramePage extends StatelessWidget {
@@ -36,7 +37,7 @@ class FramePage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: AppTheme.primaryPink,
                 ),
               ),
             ),
@@ -79,7 +80,7 @@ class FramePage extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Image.asset(
             path,
-            fit: BoxFit.cover,
+            fit: BoxFit.fitHeight,
             errorBuilder: (_, __, ___) => const Center(
               child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
             ),

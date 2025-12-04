@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pictaboo/theme/app_theme.dart';
 
 import 'pages/frame_page.dart';
 import 'pages/projects_page.dart';
@@ -101,7 +102,7 @@ class _HomeContent extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF5B2B78),
+                      color: AppTheme.primaryPink,
                     ),
                   ),
                 ],
@@ -126,7 +127,7 @@ class _HomeContent extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF8B2A6A),
+                        color: AppTheme.primaryPink,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -140,7 +141,7 @@ class _HomeContent extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: onStartPressed, // ⬅️ langsung ke tab Frame
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF2B7C5),
+                          backgroundColor: Colors.pink.shade400,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -186,7 +187,7 @@ class _HomeContent extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF8B2A6A),
+                  color: AppTheme.primaryPink,
                 ),
               ),
 
@@ -211,7 +212,7 @@ class _HomeContent extends StatelessWidget {
                         );
                       },
                       child: Container(
-                        width: 140,
+                        width: 120,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           color: Colors.white.withValues(alpha: 0.9),
@@ -228,7 +229,7 @@ class _HomeContent extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
                             framePath,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.fitHeight,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: Colors.pink.shade50,

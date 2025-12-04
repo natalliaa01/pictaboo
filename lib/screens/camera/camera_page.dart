@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
@@ -22,6 +23,8 @@ class _CameraPageState extends State<CameraPage> {
   int photoCount = 0;
 
   List<String> capturedPhotos = [];
+  Timer? countdownTimer;
+  int countdown = 0; // Untuk menampilkan timer mundur di UI
 
   @override
   void initState() {
@@ -60,13 +63,26 @@ class _CameraPageState extends State<CameraPage> {
     if (mounted) setState(() {});
   }
 
+  // Fungsi untuk memulai timer mundur
+  void startTimer() {
+    if (timerValue > 0) {
+      countdown = timerValue;
+      countdownTimer?.cancel(); // Hentikan timer yang sedang berjalan
+      countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        if (countdown > 0) {
+          setState(() {
+            countdown--;
+          });
+        } else {
+          countdownTimer?.cancel();
+          takePhoto(); // Ambil foto setelah timer selesai
+        }
+      });
+    }
+  }
+
   Future<void> takePhoto() async {
     if (!controller!.value.isInitialized) return;
-
-    // Jika timer aktif → tunggu sesuai detik
-    if (timerValue > 0) {
-      await Future.delayed(Duration(seconds: timerValue));
-    }
 
     final image = await controller!.takePicture();
 
@@ -188,6 +204,21 @@ class _CameraPageState extends State<CameraPage> {
             ),
 
             const SizedBox(height: 10),
+            // Timer Display
+            if (timerValue > 0 && countdown > 0) 
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  '$countdown',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryPink,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 10),
 
             // 👇👇 CAMERA PREVIEW TIDAK GEPENG 👇👇
             SizedBox(
@@ -209,7 +240,13 @@ class _CameraPageState extends State<CameraPage> {
 
             // SHUTTER BUTTON
             GestureDetector(
-              onTap: takePhoto,
+              onTap: () {
+                if (timerValue == 0) {
+                  takePhoto();
+                } else {
+                  startTimer();
+                }
+              },
               child: Container(
                 height: 80,
                 width: 80,
@@ -245,8 +282,11 @@ class _CameraPageState extends State<CameraPage> {
   Widget timerButton(int value, String label) {
     final isSelected = timerValue == value;
     return GestureDetector(
-      onTap: () {
-        setState(() => timerValue = value);
+     onTap: () {
+         setState(() {
+          timerValue = value;
+          countdown = value;  // Set countdown awal sesuai pilihan timer
+        });
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

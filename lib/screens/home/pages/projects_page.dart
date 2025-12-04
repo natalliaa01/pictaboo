@@ -93,7 +93,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
             borderRadius: BorderRadius.circular(16),
             child: Image.file(
               File(filePath),
-              fit: BoxFit.cover,
+              fit: BoxFit.fitHeight,
             ),
           ),
         );

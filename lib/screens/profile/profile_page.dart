@@ -21,7 +21,7 @@ class ProfilePage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.accentPurple,
+                color: AppTheme.primaryPink,
               ),
             ),
 
@@ -47,7 +47,7 @@ class ProfilePage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.accentPurple,
+                color: AppTheme.primaryPink,
               ),
             ),
 

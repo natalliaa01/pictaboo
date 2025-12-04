@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'package:pictaboo/theme/app_theme.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -40,7 +41,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
+                    color: AppTheme.primaryPink,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -144,7 +145,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: const Text(
                         "Login",
                         style: TextStyle(
-                          color: Colors.deepPurple,
+                          color: AppTheme.primaryPink,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
