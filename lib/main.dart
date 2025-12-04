@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome/welcome_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseConfig.initialize();
   runApp(const PictABooApp());
 }
 

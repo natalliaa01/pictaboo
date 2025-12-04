@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'package:pictaboo/theme/app_theme.dart';
+import 'package:bcrypt/bcrypt.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -14,6 +16,72 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  Future<void> signUpUser() async {
+  final name = nameController.text;
+  final email = emailController.text;
+  final password = passwordController.text;
+
+  try {
+      // Sign up user with Supabase
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'username': name, // Menyimpan username di user metadata
+        },
+      );
+
+      if (response.user != null) {
+        // Sign up berhasil
+        // CATATAN: Supabase Auth sudah otomatis hash password
+        // Tidak perlu manual hash dengan bcrypt
+        
+        // Insert data tambahan ke tabel 'users' jika diperlukan
+        try {
+          await Supabase.instance.client.from('users').insert({
+            'id': response.user!.id, // Gunakan user ID dari auth
+            'username': name,
+            'email': email,
+            // JANGAN simpan password_hash manual, Supabase Auth sudah handle ini
+          });
+        } catch (e) {
+          // Jika insert gagal, tampilkan pesan tapi tetap lanjut ke login
+          print('Error inserting user data: $e');
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sign up successful! Please check your email to verify your account.'),
+            ),
+          );
+
+          // Navigasi ke login screen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const LoginScreen(),
+            ),
+          );
+        }
+      }
+    } on AuthException catch (error) {
+      // Handle Supabase Auth error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (error) {
+      // Handle other errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unexpected error: $error')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,10 +91,7 @@ class _SignupScreenState extends State<SignupScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFBD1DC),
-              Color(0xFFF5B7C6),
-            ],
+            colors: [Color(0xFFFBD1DC), Color(0xFFF5B7C6)],
           ),
         ),
         child: SafeArea(
@@ -47,14 +112,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 10),
                 const Text(
                   "Sign up to get started",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
                 ),
                 const SizedBox(height: 40),
 
-                // Name
+                // Name field
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
@@ -68,7 +130,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Email
+                // Email field
                 TextField(
                   controller: emailController,
                   decoration: InputDecoration(
@@ -82,7 +144,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password
+                // Password field
                 TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -101,14 +163,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: signUpUser,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -118,17 +173,14 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     child: const Text(
                       "Sign Up",
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // Login redirect
+                // Redirect to Login page
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -149,7 +201,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    )
+                    ),
                   ],
                 )
               ],

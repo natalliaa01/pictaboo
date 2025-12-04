@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'signup_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Pastikan sudah import Supabase
 import '../home/home_screen.dart';
 import 'package:pictaboo/theme/app_theme.dart';
+import 'signup_screen.dart';
+import '../../config/supabase_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -87,13 +89,42 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const HomeScreen(),
-                        ),
-                      );
+                    onPressed: () async {
+                     try {
+                        // Call signIn dengan try-catch
+                        final response = await Supabase.instance.client.auth.signInWithPassword(
+                          email: emailController.text,
+                          password: passwordController.text,
+                        );
+
+                        // Jika berhasil, user tidak akan null
+                        if (response.user != null) {
+                          // Login berhasil, lanjutkan ke HomeScreen
+                          if (mounted) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HomeScreen(),
+                              ),
+                            );
+                          }
+                        }
+                      } on AuthException catch (error) {
+                        // Tangkap error dari Supabase
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.message)),
+                          );
+                        }
+                      } catch (error) {
+                        // Tangkap error lainnya
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Unexpected error: $error')),
+                          );
+                        }
+                      }
+
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
