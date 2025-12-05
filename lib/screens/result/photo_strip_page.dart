@@ -56,9 +56,12 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
                       Column(
                         children: List.generate(3, (i) {
                           return Expanded(
-                            child: Image.file(
-                              File(widget.photos[i]),
-                              fit: BoxFit.cover, // biar penuh, meski sedikit ke-crop
+                          child: AspectRatio(
+                              aspectRatio: 4 / 3,
+                              child: Image.file(
+                                File(widget.photos[i]),
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           );
                         }),
