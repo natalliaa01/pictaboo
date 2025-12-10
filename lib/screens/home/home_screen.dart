@@ -68,6 +68,11 @@ class _HomeContent extends StatelessWidget {
   // 1 frame dulu, nanti bisa ditambah
   static const List<String> framePaths = [
     'assets/frames/frame1.png',
+    "assets/frames/frame2.png",
+    "assets/frames/frame3.png",
+    "assets/frames/frame4.png",
+    "assets/frames/frame5.png",
+    "assets/frames/frame6.png",
   ];
 
   @override
@@ -169,13 +174,13 @@ class _HomeContent extends StatelessWidget {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    _exampleStrip('assets/welcome/sample_strip1.png'),
+                    _exampleStrip('assets/illustrations/image1.jpeg'),
                     const SizedBox(width: 12),
-                    _exampleStrip('assets/welcome/sample_strip2.png'),
+                    _exampleStrip('assets/illustrations/image2.jpeg'),
                     const SizedBox(width: 12),
-                    _exampleStrip('assets/welcome/sample_strip3.png'),
+                    _exampleStrip('assets/illustrations/image3.jpg'),
                     const SizedBox(width: 12),
-                    _exampleStrip('assets/welcome/sample_strip4.png'),
+                    _exampleStrip('assets/illustrations/image4.jpg'),
                   ],
                 ),
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pictaboo/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/login_screen.dart'; // Import LoginScreen
+import 'profile_edit.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,33 +21,36 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
+  String? avatarUrl;
+
   // Load data user dari Supabase
   Future<void> _loadUserData() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    
-    if (user != null) {
+  final user = Supabase.instance.client.auth.currentUser;
+
+  if (user != null) {
+    setState(() {
+      userEmail = user.email ?? "No Email";
+      userName = user.userMetadata?['username'] ?? "User";
+    });
+
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single();
+
       setState(() {
-        userEmail = user.email ?? "No Email";
-        // Ambil username dari metadata atau tabel users
-        userName = user.userMetadata?['username'] ?? "User";
+        userName = response['username'] ?? userName;
+        avatarUrl = response['avatar_url'];
       });
 
-      // Optional: Ambil data dari tabel 'users' jika ada
-      try {
-        final response = await Supabase.instance.client
-            .from('users')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-        
-        setState(() {
-          userName = response['username'] ?? userName;
-        });
-      } catch (e) {
-        print('Error loading user data: $e');
-      }
+    } catch (e) {
+      print('Error loading user data: $e');
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,10 +70,12 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundImage: AssetImage("assets/logo/logo.png"),
-              ),
+              CircleAvatar(
+  radius: 50,
+  backgroundImage: avatarUrl != null
+      ? NetworkImage(avatarUrl!)
+      : const AssetImage("assets/logo/logo.png") as ImageProvider,
+),
               const SizedBox(height: 20),
 
               Text(
@@ -96,14 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _menu("Edit Profile", Icons.person, onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                );
-              }),
-
-              _menu("Change Password", Icons.lock, onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+                  MaterialPageRoute(builder: (context) => const ProfileEditPage())
                 );
               }),
 
@@ -239,36 +238,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         );
       },
-    );
-  }
-}
-
-// Dummy page untuk Edit Profile
-class EditProfilePage extends StatelessWidget {
-  const EditProfilePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Profile"),
-      ),
-      body: const Center(child: Text("Edit Profile Page")),
-    );
-  }
-}
-
-// Dummy page untuk Change Password
-class ChangePasswordPage extends StatelessWidget {
-  const ChangePasswordPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Change Password"),
-      ),
-      body: const Center(child: Text("Change Password Page")),
     );
   }
 }

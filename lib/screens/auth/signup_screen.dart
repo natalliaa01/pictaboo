@@ -22,85 +22,81 @@ class _SignupScreenState extends State<SignupScreen> {
   final password = passwordController.text;
 
   try {
-      // Sign up user with Supabase
-      final response = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'username': name, // Menyimpan username di user metadata
-        },
+    // 1. SIGNUP dulu → baru dapat response.user
+    final response = await Supabase.instance.client.auth.signUp(
+      email: email,
+      password: password,
+      data: {
+        'username': name,
+      },
+    );
+
+    // kalau signup gagal
+    if (response.user == null) {
+      throw Exception("Signup failed");
+    }
+
+    // 2. INSERT ke tabel users memakai user.id
+    await Supabase.instance.client.from('users').insert({
+      'id': response.user!.id,
+      'username': name,
+      'email': email,
+    });
+
+    // 3. DONE
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Sign up successful!")),
       );
 
-      if (response.user != null) {
-        // Sign up berhasil
-        // CATATAN: Supabase Auth sudah otomatis hash password
-        // Tidak perlu manual hash dengan bcrypt
-        
-        // Insert data tambahan ke tabel 'users' jika diperlukan
-        try {
-          await Supabase.instance.client.from('users').insert({
-            'id': response.user!.id, // Gunakan user ID dari auth
-            'username': name,
-            'email': email,
-            // JANGAN simpan password_hash manual, Supabase Auth sudah handle ini
-          });
-        } catch (e) {
-          // Jika insert gagal, tampilkan pesan tapi tetap lanjut ke login
-          print('Error inserting user data: $e');
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sign up successful! Please check your email to verify your account.'),
-            ),
-          );
-
-          // Navigasi ke login screen
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const LoginScreen(),
-            ),
-          );
-        }
-      }
-    } on AuthException catch (error) {
-      // Handle Supabase Auth error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
-      }
-    } catch (error) {
-      // Handle other errors
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unexpected error: $error')),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
     }
+
+  } on AuthException catch (error) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(error.message)));
+  } catch (error) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text("Unexpected error: $error")));
   }
+}
+
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFBD1DC), Color(0xFFF5B7C6)],
-          ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFBD1DC),
+            Color(0xFFF5B7C6),
+          ],
         ),
-        child: SafeArea(
-          child: Padding(
+      ),
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
+                // LOGO
+                Image.asset(
+                  "assets/logo/logo.png",
+                  width: 80,
+                  height: 80,
+                ),
+                const SizedBox(height: 20),
+
                 const Text(
                   "Create Account",
                   style: TextStyle(
@@ -109,14 +105,19 @@ class _SignupScreenState extends State<SignupScreen> {
                     color: AppTheme.primaryPink,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
+
                 const Text(
                   "Sign up to get started",
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
                 ),
+
                 const SizedBox(height: 40),
 
-                // Name field
+                // NAME
                 TextField(
                   controller: nameController,
                   decoration: InputDecoration(
@@ -130,7 +131,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Email field
+                // EMAIL
                 TextField(
                   controller: emailController,
                   decoration: InputDecoration(
@@ -144,7 +145,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password field
+                // PASSWORD
                 TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -157,9 +158,10 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 30),
 
-                // Sign Up Button
+                // SIGN UP BUTTON
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -173,14 +175,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     child: const Text(
                       "Sign Up",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // Redirect to Login page
+                // LOGIN LINK
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -203,12 +208,16 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                   ],
-                )
+                ),
+
+                const SizedBox(height: 30),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

@@ -19,12 +19,12 @@ class _CameraPageState extends State<CameraPage> {
   List<CameraDescription> cameras = [];
   bool isFrontCamera = false;
 
-  int timerValue = 0; // 0 = off, 3, 5 seconds
+  int timerValue = 0;
+  int countdown = 0;
   int photoCount = 0;
 
   List<String> capturedPhotos = [];
   Timer? countdownTimer;
-  int countdown = 0; // Untuk menampilkan timer mundur di UI
 
   @override
   void initState() {
@@ -33,65 +33,43 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   Future<void> initCamera() async {
-    try {
-      cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        debugPrint('No cameras available');
-        return;
-      }
+    cameras = await availableCameras();
+    if (cameras.isEmpty) return;
 
-      // kalau cuma 1 kamera, pakai itu saja
-      final CameraDescription backCamera = cameras[0];
-      final CameraDescription? frontCamera =
-          cameras.length > 1 ? cameras[1] : null;
+    final backCam = cameras[0];
+    final frontCam = cameras.length > 1 ? cameras[1] : null;
 
-      startCamera(isFrontCamera && frontCamera != null ? frontCamera : backCamera);
-    } catch (e) {
-      debugPrint('initCamera error: $e');
-    }
+    startCamera(isFrontCamera && frontCam != null ? frontCam : backCam);
   }
 
-  Future<void> startCamera(CameraDescription cameraDescription) async {
-    controller = CameraController(
-      cameraDescription,
-      ResolutionPreset.medium,   // ← ganti ini
-      enableAudio: false,
-    );
-
-
+  Future<void> startCamera(CameraDescription cam) async {
+    controller = CameraController(cam, ResolutionPreset.high, enableAudio: false);
     await controller!.initialize();
     if (mounted) setState(() {});
   }
 
-  // Fungsi untuk memulai timer mundur
   void startTimer() {
-    if (timerValue > 0) {
-      countdown = timerValue;
-      countdownTimer?.cancel(); // Hentikan timer yang sedang berjalan
-      countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-        if (countdown > 0) {
-          setState(() {
-            countdown--;
-          });
-        } else {
-          countdownTimer?.cancel();
-          takePhoto(); // Ambil foto setelah timer selesai
-        }
-      });
-    }
+    countdown = timerValue;
+    countdownTimer?.cancel();
+
+    countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (countdown > 0) {
+        setState(() => countdown--);
+      } else {
+        countdownTimer?.cancel();
+        takePhoto();
+      }
+    });
   }
 
   Future<void> takePhoto() async {
     if (!controller!.value.isInitialized) return;
 
-    final image = await controller!.takePicture();
+    final picture = await controller!.takePicture();
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    final directory = await getTemporaryDirectory();
-    final filePath =
-        '${directory.path}/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-    final newFile = await File(image.path).copy(filePath);
-
+    final newFile = await File(picture.path).copy(filePath);
     capturedPhotos.add(newFile.path);
     photoCount++;
 
@@ -111,195 +89,208 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void switchCamera() {
-    if (cameras.length < 2) {
-      // tidak ada kamera kedua, abaikan
-      return;
-    }
-    setState(() {
-      isFrontCamera = !isFrontCamera;
-    });
+    if (cameras.length < 2) return;
+
+    setState(() => isFrontCamera = !isFrontCamera);
     startCamera(isFrontCamera ? cameras[1] : cameras[0]);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.softPink1,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: AppTheme.softPink1,
+    body: SafeArea(
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
 
-            // HEADER
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      size: 28,
-                      color: AppTheme.primaryPink,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      timerButton(0, "OFF"),
-                      const SizedBox(width: 10),
-                      timerButton(3, "3s"),
-                      const SizedBox(width: 10),
-                      timerButton(5, "5s"),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: switchCamera,
-                    child: const Icon(
-                      Icons.cameraswitch,
-                      size: 32,
-                      color: AppTheme.primaryPink,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // ---------------------------------------------------------
+          // HEADER (tetap kecil di atas)
+          // ---------------------------------------------------------
+          _buildHeader(),
+          const SizedBox(height: 10),
 
-            const SizedBox(height: 10),
+          // ---------------------------------------------------------
+          // PREVIEW 3 FOTO (pindahkan lebih ke tengah)
+          // ---------------------------------------------------------
+          _buildPhotoPreviewStrip(),
+          const SizedBox(height: 20),
 
-            // 👇👇 PREVIEW 3 FOTO (KOTAK HIJAU DI SS-MU) 👇👇
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final hasPhoto = index < capturedPhotos.length;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: hasPhoto ? AppTheme.primaryPink : Colors.white,
-                        width: 2,
-                      ),
-                    ),
-                    child: hasPhoto
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(capturedPhotos[index]),
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.photo_camera_outlined,
-                            color: Colors.grey,
-                          ),
-                  );
-                }),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-            // Timer Display
-            if (timerValue > 0 && countdown > 0) 
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  '$countdown',
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryPink,
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 10),
-
-            // 👇👇 CAMERA PREVIEW TIDAK GEPENG 👇👇
-            SizedBox(
-            // tinggi diset dari lebar, biar mirip XML 4:3
-            height: MediaQuery.of(context).size.width * 3 / 4, // tinggi = lebar * (3/4)
+          // ---------------------------------------------------------
+          // CAMERA PREVIEW (TETAP, tapi sekarang di tengah)
+          // ---------------------------------------------------------
+          Expanded(
             child: Center(
-              child: controller == null || !controller!.value.isInitialized
-                  ? const CircularProgressIndicator()
-                  : AspectRatio(
-                      aspectRatio: 4 / 3, // ⬅️ landscape: lebar > tinggi
-                      child: CameraPreview(controller!),
-                    ),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: (MediaQuery.of(context).size.width * 0.9) * 3 / 4,
+                child: controller == null || !controller!.value.isInitialized
+                    ? const CircularProgressIndicator()
+                    : AspectRatio(
+                        aspectRatio: 4 / 3,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.center,
+                            child: FittedBox(
+                              fit: BoxFit.cover,
+                              child: SizedBox(
+                                width: controller!.value.previewSize!.height,
+                                height: controller!.value.previewSize!.width,
+                                child: CameraPreview(controller!),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
             ),
           ),
 
+          const SizedBox(height: 20),
 
+          // ---------------------------------------------------------
+          // SHUTTER BUTTON (pindahkan ke tengah bawah)
+          // ---------------------------------------------------------
+          _buildShutterButton(),
+          const SizedBox(height: 30),
+        ],
+      ),
+    ),
+  );
+}
 
-            const SizedBox(height: 10),
+  // -----------------------------------------------------------
+  // UI COMPONENTS BELOW
+  // -----------------------------------------------------------
 
-            // SHUTTER BUTTON
-            GestureDetector(
-              onTap: () {
-                if (timerValue == 0) {
-                  takePhoto();
-                } else {
-                  startTimer();
-                }
-              },
-              child: Container(
-                height: 80,
-                width: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.primaryPink,
-                    width: 5,
-                  ),
-                ),
-                child: Center(
-                  child: Container(
-                    height: 60,
-                    width: 60,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryPink,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _iconButton(Icons.arrow_back, () => Navigator.pop(context)),
+          _timerSelector(),
+          _iconButton(Icons.cameraswitch_rounded, switchCamera),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(height: 20),
-          ],
+  Widget _iconButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.9),
+        ),
+        child: Icon(icon, color: AppTheme.primaryPink, size: 26),
+      ),
+    );
+  }
+
+  Widget _timerSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: AppTheme.primaryPink),
+      ),
+      child: Row(
+        children: [
+          _timerButton(0, "OFF"),
+          _timerButton(3, "3s"),
+          _timerButton(5, "5s"),
+        ],
+      ),
+    );
+  }
+
+  Widget _timerButton(int value, String label) {
+    final selected = value == timerValue;
+    return GestureDetector(
+      onTap: () => setState(() {
+        timerValue = value;
+        countdown = value;
+      }),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primaryPink : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppTheme.primaryPink,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildPhotoPreviewStrip() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (i) {
+        final filled = i < capturedPhotos.length;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: filled ? AppTheme.primaryPink : Colors.white,
+              width: 2,
+            ),
+          ),
+          child: filled
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.file(File(capturedPhotos[i]), fit: BoxFit.cover),
+                )
+              : const Icon(Icons.photo_camera_outlined, color: Colors.grey),
+        );
+      }),
+    );
+  }
 
-  // TIMER BUTTON WIDGET
-  Widget timerButton(int value, String label) {
-    final isSelected = timerValue == value;
+  Widget _buildCountdown() {
+    return Text(
+      "$countdown",
+      style: const TextStyle(
+        fontSize: 48,
+        fontWeight: FontWeight.bold,
+        color: AppTheme.primaryPink,
+      ),
+    );
+  }
+
+  Widget _buildShutterButton() {
     return GestureDetector(
-     onTap: () {
-         setState(() {
-          timerValue = value;
-          countdown = value;  // Set countdown awal sesuai pilihan timer
-        });
-      },
+      onTap: () => timerValue == 0 ? takePhoto() : startTimer(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        width: 90,
+        height: 90,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryPink : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppTheme.primaryPink),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.primaryPink, width: 6),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.primaryPink,
-            fontWeight: FontWeight.w600,
+        child: Center(
+          child: Container(
+            width: 65,
+            height: 65,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.primaryPink,
+            ),
           ),
         ),
       ),

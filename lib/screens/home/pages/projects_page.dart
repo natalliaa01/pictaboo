@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'project_detail_screen.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -10,7 +10,10 @@ class ProjectsPage extends StatefulWidget {
 }
 
 class _ProjectsPageState extends State<ProjectsPage> {
-  List<String> savedProjects = [];
+  final supabase = Supabase.instance.client;
+
+  List<dynamic> projects = [];
+  bool loading = true;
 
   @override
   void initState() {
@@ -19,25 +22,74 @@ class _ProjectsPageState extends State<ProjectsPage> {
   }
 
   Future<void> loadProjects() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getStringList('my_projects') ?? [];
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-    // filter: remove missing files
-    final valid = data.where((p) => File(p).existsSync()).toList();
+    final response = await supabase
+        .from("projects")
+        .select()
+        .eq("user_id", user.id)
+        .order("created_at", ascending: false);
 
     setState(() {
-      savedProjects = valid;
+      projects = response;
+      loading = false;
     });
+  }
+
+  // DELETE STORAGE + TABEL
+  Future<void> deleteProject(dynamic row) async {
+    final imageUrl = row["image_url"];
+    final filePath = imageUrl.split("/projects/").last;
+
+    // hapus di storage
+    await supabase.storage.from("projects").remove([filePath]);
+
+    // hapus row
+    await supabase.from("projects").delete().eq("id", row["id"]);
+
+    await loadProjects();
+  }
+
+  void confirmDelete(dynamic row) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Project"),
+        content: const Text("This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await deleteProject(row);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFBD1DC),
       body: SafeArea(
-        child: savedProjects.isEmpty
-            ? _buildEmpty()
-            : _buildGrid(),
+        child:
+            projects.isEmpty ? _buildEmpty() : _buildGrid(),
       ),
     );
   }
@@ -62,68 +114,46 @@ class _ProjectsPageState extends State<ProjectsPage> {
           const Text(
             "Your saved photo strips will appear here.",
             style: TextStyle(color: Colors.black45),
-          )
+          ),
         ],
       ),
     );
   }
 
   Widget _buildGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: savedProjects.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 1 / 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemBuilder: (context, index) {
-        final filePath = savedProjects[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProjectDetailScreen(filePath),
-              ),
-            );
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.file(
-              File(filePath),
-              fit: BoxFit.fitHeight,
+  return GridView.builder(
+    padding: const EdgeInsets.all(16),
+    itemCount: projects.length,
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      childAspectRatio: 0.45, // lebih panjang supaya gambar tidak terlihat zoom
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+    ),
+    itemBuilder: (context, index) {
+      final item = projects[index];
+      final imageUrl = item["image_url"];
+
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProjectDetailScreen(imageUrl: imageUrl),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class ProjectDetailScreen extends StatelessWidget {
-  final String filePath;
-  const ProjectDetailScreen(this.filePath, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFBD1DC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.pink,
-      ),
-      body: Center(
+          );
+        },
+        onLongPress: () => confirmDelete(item),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: Image.file(
-            File(filePath),
-            fit: BoxFit.contain,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.fitHeight, // gambar tidak akan ke-zoom
           ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
+
 }

@@ -9,8 +9,11 @@ import 'package:path_provider/path_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../services/gallery_saver_android.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 // di atas file (di luar kelas) taruh ini:
-const double kFrameAspectRatio = 0.35;
+// const double kFrameAspectRatio = 0.35;
+const double kFrameAspectRatio = 707 / 2000;
 // contoh, nanti kamu sesuaikan
 
 
@@ -32,6 +35,19 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
   final GlobalKey _captureKey = GlobalKey();
   bool saving = false;
 
+// ukuran frame asli dalam pixel
+static const double _frameHeightPx = 2000;
+
+// tinggi 1 slot (PNG asli)
+static const double _slotHeightPx = 656;
+
+// posisi slot pertama dari atas (PNG asli)
+static const double _slotTop1Px = -30;
+
+// jarak antar slot (PNG asli → bisa kamu sesuaikan)
+static const double _slotGapPx = -55;
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,34 +65,57 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
               child: RepaintBoundary(
                 key: _captureKey,
                 child: AspectRatio(
-                  aspectRatio: kFrameAspectRatio, // pakai rasio frame
-                  child: Stack(
-                    children: [
-                      // 3 FOTO DI BELAKANG FRAME
-                      Column(
-                        children: List.generate(3, (i) {
-                          return Expanded(
-                          child: AspectRatio(
-                              aspectRatio: 4 / 3,
-                              child: Image.file(
-                                File(widget.photos[i]),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
+  aspectRatio: kFrameAspectRatio,
+  child: LayoutBuilder(
+    builder: (context, constraints) {
+      final renderHeight = constraints.maxHeight;
 
-                      // FRAME PNG DI ATASNYA
-                      Positioned.fill(
-                        child: Image.asset(
-                          widget.framePath,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      // hitung skala PNG → device
+      final scale = renderHeight / _frameHeightPx;
+
+      final slotHeight = _slotHeightPx * scale;
+
+      // hitung posisi slot 1,2,3 setelah diskalakan
+      final slotTop1 = _slotTop1Px * scale;
+      final slotTop2 = (_slotTop1Px + _slotHeightPx + _slotGapPx) * scale;
+      final slotTop3 = (_slotTop1Px + 2 * _slotHeightPx + 2 * _slotGapPx) * scale;
+
+      return Stack(
+        children: [
+          Positioned(
+            left: 0, right: 0,
+            top: slotTop1,
+            height: slotHeight,
+            child: _slot(widget.photos[0]),
+          ),
+
+          Positioned(
+            left: 0, right: 0,
+            top: slotTop2,
+            height: slotHeight,
+            child: _slot(widget.photos[1]),
+          ),
+
+          Positioned(
+            left: 0, right: 0,
+            top: slotTop3,
+            height: slotHeight,
+            child: _slot(widget.photos[2]),
+          ),
+
+          // frame PNG ditumpuk paling atas
+          Positioned.fill(
+            child: Image.asset(
+              widget.framePath,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+      );
+    },
+  ),
+),
+
               ),
             ),
           ),
@@ -111,6 +150,16 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
     );
   }
 
+  Widget _slot(String path) {
+    return ClipRect(
+      child: Image.file(
+        File(path),
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
+
   // SLOT FOTO AMAN: KALAU INDEX DI LUAR RANGE, TAMPILIN PLACEHOLDER
   Widget _photoSlot(int index) {
     if (index >= widget.photos.length) {
@@ -129,61 +178,77 @@ class _PhotoStripPageState extends State<PhotoStripPage> {
   }
 
   Future<void> _saveResult() async {
-    setState(() => saving = true);
+  setState(() => saving = true);
 
-    try {
-      final boundary = _captureKey.currentContext
-          ?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) {
-        throw Exception('Boundary not found');
-      }
+  try {
+    // ---- 1. RENDER IMAGE ----
+    final boundary = _captureKey.currentContext
+        ?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) throw Exception("Boundary not found");
 
-      final ui.Image image =
-          await boundary.toImage(pixelRatio: 3.0); // high-res
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw Exception('Failed to encode image');
-      }
+    final ui.Image image =
+        await boundary.toImage(pixelRatio: 3.0); // High resolution
+    final byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) throw Exception("PNG encoding failed");
 
-      final Uint8List pngBytes = byteData.buffer.asUint8List();
+    final Uint8List pngBytes = byteData.buffer.asUint8List();
 
-      // SAVE TO TEMP FILE
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}/strip_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      await file.writeAsBytes(pngBytes);
+    // ---- 2. SAVE TO TEMP FILE ----
+    final dir = await getTemporaryDirectory();
+    final file = File(
+        '${dir.path}/strip_${DateTime.now().millisecondsSinceEpoch}.png');
+    await file.writeAsBytes(pngBytes);
 
-      // SAVE TO GALLERY + MY PROJECTS
-      final ok = await GallerySaverAndroid.saveImageToGallery(file);
-      if (ok) {
-        await GallerySaverAndroid.saveToMyProjects(file.path);
-      }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(ok ? "Saved to My Projects!" : "Failed to save"),
-        ),
-      );
-
-      if (ok) Navigator.pop(context);
-    } catch (e) {
-      debugPrint("SAVE ERROR: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Error while saving"),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => saving = false);
-      }
+    // ---- 3. SAVE TO GALLERY (fungsi lama tetap berjalan) ----
+    final galleryOk = await GallerySaverAndroid.saveImageToGallery(file);
+    if (galleryOk) {
+      await GallerySaverAndroid.saveToMyProjects(file.path);
     }
+
+    // ---- 4. UPLOAD TO SUPABASE STORAGE ----
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) throw Exception("Not logged in");
+
+    final fileName =
+        "strip_${user.id}_${DateTime.now().millisecondsSinceEpoch}.png";
+
+    await Supabase.instance.client.storage
+        .from("projects")
+        .uploadBinary(
+          fileName,
+          pngBytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+    // ---- 5. GET PUBLIC URL ----
+    final publicUrl = Supabase.instance.client.storage
+        .from("projects")
+        .getPublicUrl(fileName);
+
+    // ---- 6. INSERT RECORD KE SUPABASE TABLE `projects` ----
+    await Supabase.instance.client.from("projects").insert({
+      "user_id": user.id,
+      "image_url": publicUrl,
+    });
+
+    // ---- 7. DONE FEEDBACK ----
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Saved to gallery & Supabase!")),
+    );
+  } catch (e) {
+    debugPrint("SAVE ERROR: $e");
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+
+  } finally {
+    if (mounted) setState(() => saving = false);
   }
+}
 }
