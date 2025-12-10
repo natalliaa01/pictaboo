@@ -59,7 +59,7 @@ class SelectSourcePage extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.accentPurple,
+                          color: AppTheme.primaryPink,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -82,6 +82,7 @@ class SelectSourcePage extends StatelessWidget {
             Expanded(
               child: Image.asset(
                 "assets/illustrations/camera_pink.png",
+                width: 300,
                 fit: BoxFit.contain,
               ),
             ),

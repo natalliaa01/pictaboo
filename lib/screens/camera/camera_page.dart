@@ -105,19 +105,35 @@ Widget build(BuildContext context) {
           const SizedBox(height: 8),
 
           // ---------------------------------------------------------
-          // HEADER (tetap kecil di atas)
+          // HEADER
           // ---------------------------------------------------------
           _buildHeader(),
           const SizedBox(height: 10),
 
           // ---------------------------------------------------------
-          // PREVIEW 3 FOTO (pindahkan lebih ke tengah)
+          // PREVIEW 3 FOTO
           // ---------------------------------------------------------
           _buildPhotoPreviewStrip(),
           const SizedBox(height: 20),
 
+          const SizedBox(height: 10),
+           // Timer Display
+            if (timerValue > 0 && countdown > 0) 
+              Padding(
+                padding: const EdgeInsets.all(0),
+                child: Text(
+                  '$countdown',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryPink,
+                  ),
+                ),
+              ),
+
+
           // ---------------------------------------------------------
-          // CAMERA PREVIEW (TETAP, tapi sekarang di tengah)
+          // CAMERA PREVIEW
           // ---------------------------------------------------------
           Expanded(
             child: Center(
@@ -146,10 +162,9 @@ Widget build(BuildContext context) {
             ),
           ),
 
-          const SizedBox(height: 20),
 
           // ---------------------------------------------------------
-          // SHUTTER BUTTON (pindahkan ke tengah bawah)
+          // SHUTTER BUTTON
           // ---------------------------------------------------------
           _buildShutterButton(),
           const SizedBox(height: 30),
