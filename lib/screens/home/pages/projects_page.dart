@@ -126,7 +126,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
     itemCount: projects.length,
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 2,
-      childAspectRatio: 0.45, // lebih panjang supaya gambar tidak terlihat zoom
+      childAspectRatio: 0.45,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
     ),
@@ -148,7 +148,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
           borderRadius: BorderRadius.circular(16),
           child: Image.network(
             imageUrl,
-            fit: BoxFit.fitHeight, // gambar tidak akan ke-zoom
+            fit: BoxFit.fitHeight,
           ),
         ),
       );

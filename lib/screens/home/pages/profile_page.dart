@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pictaboo/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/login_screen.dart'; // Import LoginScreen
+import '../../auth/login_screen.dart';
 import 'profile_edit.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -151,13 +151,13 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Menutup dialog
+                Navigator.pop(context);
               },
               child: const Text("Cancel"),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context); // Menutup dialog
+                Navigator.pop(context);
 
                 try {
                   // Logout dari Supabase
@@ -169,7 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       MaterialPageRoute(
                         builder: (context) => const LoginScreen(),
                       ),
-                      (route) => false, // Hapus semua route
+                      (route) => false,
                     );
                   }
                 } catch (e) {

@@ -21,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       _HomeContent(
         onStartPressed: () {
-          setState(() => currentIndex = 1); // pindah ke tab Frame
+          setState(() => currentIndex = 1);
         },
       ),
       const FramePage(),
@@ -144,7 +144,7 @@ class _HomeContent extends StatelessWidget {
                     SizedBox(
                       width: 140,
                       child: ElevatedButton(
-                        onPressed: onStartPressed, // ⬅️ langsung ke tab Frame
+                        onPressed: onStartPressed,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.pink.shade400,
                           shape: RoundedRectangleBorder(
