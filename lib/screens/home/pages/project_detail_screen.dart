@@ -14,15 +14,19 @@ class ProjectDetailScreen extends StatelessWidget {
         foregroundColor: Colors.pink,
         elevation: 0,
       ),
-      body: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
+      body: Align(
+        alignment: Alignment.center,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
-      ),
+      )
     );
   }
 }
