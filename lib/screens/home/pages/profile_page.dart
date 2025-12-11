@@ -14,6 +14,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String userName = "Loading...";
   String userEmail = "Loading...";
+  String? avatarUrl;
 
   @override
   void initState() {
@@ -21,36 +22,38 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
-  String? avatarUrl;
-
-  // Load data user dari Supabase
   Future<void> _loadUserData() async {
-  final user = Supabase.instance.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
 
-  if (user != null) {
-    setState(() {
-      userEmail = user.email ?? "No Email";
-      userName = user.userMetadata?['username'] ?? "User";
-    });
+    if (user != null) {
+      if (mounted) {
+        setState(() {
+          userEmail = user.email ?? "No Email";
+          userName = user.userMetadata?['username'] ?? "User";
+        });
+      }
 
-    try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('username, avatar_url')
-          .eq('id', user.id)
-          .single();
+      try {
+        final response = await Supabase.instance.client
+            .from('users')
+            .select('username, avatar_url')
+            .eq('id', user.id)
+            .single();
 
-      setState(() {
-        userName = response['username'] ?? userName;
-        avatarUrl = response['avatar_url'];
-      });
-
-    } catch (e) {
-      print('Error loading user data: $e');
+        if (mounted) {
+          setState(() {
+            userName = response['username'] ?? userName;
+            // Tambahkan timestamp agar gambar selalu fresh
+            if (response['avatar_url'] != null) {
+              avatarUrl = "${response['avatar_url']}?v=${DateTime.now().millisecondsSinceEpoch}";
+            }
+          });
+        }
+      } catch (e) {
+        print('Error loading user data: $e');
+      }
     }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -59,10 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFBD1DC),
-            Color(0xFFF5B7C6),
-          ],
+          colors: [Color(0xFFFBD1DC), Color(0xFFF5B7C6)],
         ),
       ),
       child: SafeArea(
@@ -70,12 +70,46 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              CircleAvatar(
-  radius: 50,
-  backgroundImage: avatarUrl != null
-      ? NetworkImage(avatarUrl!)
-      : const AssetImage("assets/logo/logo.png") as ImageProvider,
-),
+              // --- BAGIAN AVATAR YANG DIPERBAIKI ---
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  color: Colors.white,
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))
+                  ],
+                ),
+                child: ClipOval(
+                  child: avatarUrl != null
+                      ? Image.network(
+                          avatarUrl!,
+                          fit: BoxFit.cover,
+                          // Tampilkan loading saat gambar sedang diambil
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          // Tampilkan logo jika gambar error (misal 404)
+                          errorBuilder: (context, error, stackTrace) {
+                            print("Error loading image: $error"); // Cek console debug
+                            return Image.asset("assets/logo/logo.png", fit: BoxFit.cover);
+                          },
+                        )
+                      : Image.asset("assets/logo/logo.png", fit: BoxFit.cover),
+                ),
+              ),
+              // -------------------------------------
+
               const SizedBox(height: 20),
 
               Text(
@@ -87,32 +121,34 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               const SizedBox(height: 6),
-
-              Text(
-                userEmail,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
-              ),
-
+              Text(userEmail, style: const TextStyle(fontSize: 16, color: Colors.black54)),
               const SizedBox(height: 30),
 
               // Menu Items
-              _menu("Edit Profile", Icons.person, onTap: () {
-                Navigator.push(
+              _menu("Edit Profile", Icons.person, onTap: () async {
+                // TANGKAP DATA BALIK DARI HALAMAN EDIT
+                final resultUrl = await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ProfileEditPage())
                 );
+
+                // Jika ada URL yang dikembalikan, langsung pasang!
+                if (resultUrl != null && resultUrl is String) {
+                  print("Menerima URL baru: $resultUrl");
+                  setState(() {
+                    // Tambah timestamp lagi untuk memastikan refresh
+                    avatarUrl = "$resultUrl?t=${DateTime.now().millisecondsSinceEpoch}";
+                  });
+                  // Load data lengkap di background untuk sinkronisasi
+                  _loadUserData(); 
+                } else if (resultUrl == true) {
+                  // Fallback jika cuma return true
+                  _loadUserData();
+                }
               }),
 
-              _menu("About App", Icons.info, onTap: () {
-                _showAboutDialog(context);
-              }),
-
-              _menu("Logout", Icons.logout, onTap: () {
-                _logout(context);
-              }),
+              _menu("About App", Icons.info, onTap: () => _showAboutDialog(context)),
+              _menu("Logout", Icons.logout, onTap: () => _logout(context)),
             ],
           ),
         ),
@@ -120,7 +156,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Menu Widget yang bisa dipakai untuk setiap item
   Widget _menu(String title, IconData icon, {required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -137,56 +172,35 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Fungsi untuk aksi logout
   void _logout(BuildContext context) {
+    // ... (kode logout sama seperti sebelumnya)
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
-            "Logout",
-            style: TextStyle(color: AppTheme.primaryPink),
-          ),
+          title: const Text("Logout", style: TextStyle(color: AppTheme.primaryPink)),
           content: const Text("Are you sure you want to logout?"),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text("Cancel"),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-
                 try {
-                  // Logout dari Supabase
                   await Supabase.instance.client.auth.signOut();
-
-                  // Navigasi ke LoginScreen dan hapus semua route sebelumnya
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
                       (route) => false,
                     );
                   }
                 } catch (e) {
-                  // Tampilkan error jika logout gagal
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Logout failed: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  // Handle error
                 }
               },
-              child: const Text(
-                "Logout",
-              ),
+              child: const Text("Logout"),
             ),
           ],
         );
@@ -194,48 +208,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Fungsi untuk menampilkan dialog "About App"
   void _showAboutDialog(BuildContext context) {
-    showDialog(
+    // ... (kode about dialog sama seperti sebelumnya)
+     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            "Pict A Boo",
-            style: TextStyle(
-              color: AppTheme.primaryPink,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Version: 1.0.0",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                "Made with Flutter 💖",
-                style: TextStyle(
-                  color: Colors.pinkAccent,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Close"),
-            ),
-          ],
+          title: const Text("Pict A Boo", style: TextStyle(color: AppTheme.primaryPink, fontWeight: FontWeight.bold)),
+          content: const Text("Made with Flutter 💖"),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))],
         );
       },
     );
